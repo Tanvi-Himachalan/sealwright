@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Verify certificate · Sealwright</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="verify-wrap">
+    <div class="card verify-card" id="card"><p class="sub">Checking certificate…</p></div>
+  </div>
+<script>
+(async function () {
+  const code = decodeURIComponent(location.pathname.split("/").pop());
+  const card = document.getElementById("card");
+  const check = '<svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#3aa37a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  const cross = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#d9455f" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+
+  function row(k, v) {
+    const d = document.createElement("div");
+    const s = document.createElement("span"); s.textContent = k;
+    const b = document.createElement("b"); b.textContent = v;
+    d.append(s, b); return d;
+  }
+  function render(ok, title, msg, extra) {
+    card.className = "card verify-card " + (ok ? "ok" : "bad");
+    card.innerHTML = '<div class="icon">' + (ok ? check : cross) + "</div>";
+    const h = document.createElement("h1"); h.textContent = title;
+    const p = document.createElement("p"); p.className = "sub"; p.textContent = msg;
+    card.append(h, p);
+    if (extra) card.append(extra);
+  }
+
+  try {
+    const res = await fetch("/api/verify/" + encodeURIComponent(code));
+    const d = await res.json();
+    if (!d.valid) { render(false, "Could not verify", d.message); return; }
+    const frag = document.createElement("div");
+    const nm = document.createElement("div"); nm.className = "name"; nm.textContent = d.recipient_name;
+    frag.append(nm);
+    if (d.remark) { const r = document.createElement("div"); r.className = "sub"; r.textContent = d.remark; frag.append(r); }
+    const kv = document.createElement("div"); kv.className = "kv";
+    kv.append(row("Award", d.award_title), row("For", d.title), row("Issued by", d.issuer),
+              row("Date of issue", new Date(d.issue_date + "T00:00:00").toLocaleDateString(undefined, {day:"2-digit", month:"long", year:"numeric"})));
+    if (d.signatory_name) kv.append(row("Signed by", d.signatory_name));
+    kv.append(row("Verification ID", d.code));
+    frag.append(kv);
+    render(true, "Authentic certificate", d.message, frag);
+  } catch (e) {
+    render(false, "Something went wrong", "Please try again in a moment.");
+  }
+})();
+</script>
+</body>
+</html>

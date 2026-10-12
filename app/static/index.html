@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sealwright · Bulk certificates with verifiable seals</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%235b5bd6'/><path d='M9 16.5l5 5 9-10' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="shell">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <svg width="40" height="40" viewBox="0 0 40 40"><polygon id="star" fill="#f4b183" points=""/><circle cx="20" cy="20" r="11.5" fill="#e8749f"/><path d="M14.5 20.5l4 4 7.5-8.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><h1>Sealwright</h1><small>Bulk certificates, verifiable seals</small></div>
+    </div>
+    <button class="btn primary big" id="newBtn">＋ New batch</button>
+    <div class="side-title">Recent batches</div>
+    <div class="recent" id="recent"></div>
+    <div class="side-foot"><a href="/docs" target="_blank">API docs</a><span>v1.0</span></div>
+  </aside>
+
+  <!-- ================= MAIN ================= -->
+  <main class="main">
+
+    <!-- ---------- VIEW 1: create wizard ---------- -->
+    <section id="viewCreate">
+      <div class="page-head">
+        <h2>Create certificates</h2>
+        <p>Three quick steps. One request can hold thousands of recipients.</p>
+      </div>
+
+      <div class="stepper">
+        <div class="step active" data-step="1"><i>1</i><span>Details</span></div>
+        <div class="step-line"></div>
+        <div class="step" data-step="2"><i>2</i><span>Recipients</span></div>
+        <div class="step-line"></div>
+        <div class="step" data-step="3"><i>3</i><span>Review &amp; generate</span></div>
+      </div>
+
+      <div class="card">
+        <!-- step 1 -->
+        <div id="pane1">
+          <label for="title">Course / event name</label>
+          <input id="title" placeholder="Full-Stack Python Bootcamp 2026" maxlength="160">
+          <label for="issuer">Issuing organisation</label>
+          <input id="issuer" placeholder="Frontier Academy" maxlength="160">
+          <div class="row2">
+            <div><label for="award">Award title</label><input id="award" value="Certificate of Completion" maxlength="80"></div>
+            <div><label for="date">Issue date</label><input id="date" type="date"></div>
+          </div>
+          <div class="row2">
+            <div><label for="sigName">Signatory name <small>(optional)</small></label><input id="sigName" placeholder="Dr. A. Rao" maxlength="100"></div>
+            <div><label for="sigTitle">Signatory title <small>(optional)</small></label><input id="sigTitle" placeholder="Program Director" maxlength="100"></div>
+          </div>
+        </div>
+
+        <!-- step 2 -->
+        <div id="pane2" hidden>
+          <div class="tabs">
+            <button class="tab active" data-tab="paste">Paste list</button>
+            <button class="tab" data-tab="csv">Upload CSV</button>
+          </div>
+          <div id="tab-paste">
+            <label for="people">One recipient per line: <em>Name, email (optional), remark (optional)</em></label>
+            <textarea id="people" placeholder="Tanvi Sharma, tanvi@example.com, with Distinction&#10;Arjun Mehta, arjun@example.com&#10;Meera Iyer"></textarea>
+            <div class="hint"><span id="count">0 recipients</span> · <button class="link-btn" id="demo">Fill with demo data</button></div>
+          </div>
+          <div id="tab-csv" hidden>
+            <div class="drop" id="drop">
+              <b id="dropTitle">Drop a CSV file here, or click to browse</b>
+              <span>Columns: name, email, remark · up to 5000 rows</span>
+              <input type="file" id="file" accept=".csv,text/csv" hidden>
+            </div>
+            <div class="hint"><a href="/static/sample.csv" download>Download a sample CSV</a></div>
+          </div>
+        </div>
+
+        <!-- step 3 -->
+        <div id="pane3" hidden>
+          <div class="review" id="review"></div>
+          <div class="callout"><span>💡</span><span>Invalid rows (bad email, duplicates, missing name) won't block the batch. They are reported with the reason, and everyone else still gets a certificate.</span></div>
+        </div>
+
+        <div class="error-box" id="formError" hidden></div>
+
+        <div class="wizard-nav">
+          <button class="btn" id="back" hidden>← Back</button>
+          <button class="btn primary" id="next">Continue →</button>
+          <button class="btn primary" id="submit" hidden>Generate certificates</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- VIEW 2: batch dashboard ---------- -->
+    <section id="viewJob" hidden>
+      <div class="job-top">
+        <div class="grow">
+          <h2 id="jTitle"></h2>
+          <div class="meta" id="jMeta"></div>
+        </div>
+        <span class="badge" id="jStatus"></span>
+      </div>
+
+      <div class="overview">
+        <div class="card ring-card">
+          <div class="ring">
+            <svg width="150" height="150" viewBox="0 0 150 150">
+              <circle class="track" cx="75" cy="75" r="64" fill="none" stroke-width="14"/>
+              <circle class="fill" id="ringFill" cx="75" cy="75" r="64" fill="none" stroke-width="14" stroke-dasharray="402.1" stroke-dashoffset="402.1"/>
+            </svg>
+            <div class="pct"><span id="jPercent">0%</span><small>complete</small></div>
+          </div>
+          <div class="lbl" id="jProcessed"></div>
+        </div>
+        <div class="stats">
+          <div class="stat ok"><b id="sGen">0</b><span>Generated</span></div>
+          <div class="stat warn"><b id="sInv">0</b><span>Invalid input</span></div>
+          <div class="stat bad"><b id="sFail">0</b><span>Failed</span></div>
+          <div class="stat info"><b id="sPend">0</b><span>Pending</span></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px">
+        <div class="results-head">
+          <h3>Recipients</h3>
+          <div class="actions">
+            <button class="btn small" id="copyApi">Copy API URL</button>
+            <button class="btn small" id="retryBtn">↻ Retry failed</button>
+            <button class="btn small primary" id="zipBtn">⬇ Download all (ZIP)</button>
+          </div>
+        </div>
+
+        <div class="seg" id="filters">
+          <button class="chip active" data-f="">All</button>
+          <button class="chip" data-f="generated">Generated</button>
+          <button class="chip" data-f="invalid">Invalid</button>
+          <button class="chip" data-f="failed">Failed</button>
+          <button class="chip" data-f="pending">Pending</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Recipient</th><th>Status</th><th>Verification ID</th><th></th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <span id="pageInfo"></span>
+          <span><button class="btn small" id="prev">← Prev</button> <button class="btn small" id="next2">Next →</button></span>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <header><b id="mTitle" style="flex:1"></b>
+      <a class="btn small" id="mDownload" href="#">Download PDF</a>
+      <button class="btn small" id="mClose">Close ✕</button></header>
+    <iframe id="mFrame" title="Certificate preview"></iframe>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
